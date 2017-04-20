@@ -54,36 +54,42 @@ void formats(char *s) {
 	int i;
 	if (!s)
 		return;
-	for (i = strlen(s); i >= 0; i--) {
+	for (i = (int)strlen(s); i >= 0; i--) {
 		if ((s[i] == '|') || (s[i] == '\n'))
 			s[i] = ' ';
 	}
 }
 
-void lprofT_addchild(lprofT_NODE* pParent, lprofT_NODE* pChild)
+lprofT_NODE* lprofT_addchild(lprofT_NODE* pParent, lprofT_NODE* pChild)
 {
+	lprofT_NODE* pResult = NULL;
 	if (pParent)
 	{
 		if (pParent->nChildCount >= pParent->nMaxChildCount)
 		{
-			lprofT_NODE* ppTmp = realloc(pParent->pChild, pParent->nMaxChildCount * 2 * sizeof(lprofT_NODE));
+			lprofT_NODE* ppTmp = (lprofT_NODE*)realloc(pParent->pChild, pParent->nMaxChildCount * 2 * sizeof(lprofT_NODE));
 			assert(ppTmp);
 			if (ppTmp)
 			{
 				pParent->pChild = ppTmp;
-				pParent->pChild[pParent->nChildCount] = *pChild;
+				//pParent->pChild[pParent->nChildCount] = *pChild;
+				pResult = &(pParent->pChild[pParent->nChildCount]);
+				lprofT_assigningNode(pResult,pChild);
 				pParent->nMaxChildCount = pParent->nMaxChildCount * 2;
 			}
 		}
 		else
 		{
-			pParent->pChild[pParent->nChildCount] = *pChild;
+			//pParent->pChild[pParent->nChildCount] = *pChild;
+			pResult = &(pParent->pChild[pParent->nChildCount]);
+			lprofT_assigningNode(pResult,pChild);
 		}
-		pChild->pParent = pParent;
+		pResult->pParent = pParent;
 		pParent->nChildCount++;
-		if (pChild && pChild->pNode && pParent->pNode)
-			pChild->pNode->interval_time = (float)lprofC_get_seconds2(&pParent->pNode->time_maker_local_time_begin);
+		if (pResult && pResult->pNode && pParent->pNode)
+			pResult->pNode->interval_time = (float)lprofC_get_seconds2(&pParent->pNode->time_maker_local_time_begin);
 	}
+	return pResult;
 }
 
 void lprofT_pop()
@@ -103,28 +109,20 @@ void lprofT_pop()
 	}
 }
 
-lprofT_NODE* lprofT_createNode(int count)
+lprofT_NODE* lprofT_createNode()
 {
 	int i = 0;
 	lprofT_NODE* pNode = NULL;
-	node_size += count * sizeof(lprofT_NODE);
-	pNode = (lprofT_NODE*)malloc(count * sizeof(lprofT_NODE));
+	pNode = (lprofT_NODE*)malloc(sizeof(lprofT_NODE));
 	if(pNode)
 	{
-		memset(pNode, 0x0, count*sizeof(lprofT_NODE));
-		for (i = 0; i < count; i++)
-		{
-			pNode[i].stack_level = 0;
-			pNode[i].pNode = NULL;
-			pNode[i].pChild = (lprofT_NODE*)malloc(MAX_CHILD_SIZE*sizeof(lprofT_NODE));
-			pNode[i].nChildCount = 0;
-			pNode[i].nMaxChildCount = MAX_CHILD_SIZE;
-			if(pNode[i].pChild)
-				memset(pNode[i].pChild, 0x0, MAX_CHILD_SIZE*sizeof(lprofT_NODE));
-		}
+		memset(pNode, 0x0, sizeof(lprofT_NODE));
+		pNode->pChild = (lprofT_NODE*)malloc(MAX_CHILD_SIZE*sizeof(lprofT_NODE));
+		pNode->nChildCount = 0;
+		pNode->nMaxChildCount = MAX_CHILD_SIZE;
+		if(pNode->pChild)
+			memset(pNode->pChild, 0x0, MAX_CHILD_SIZE*sizeof(lprofT_NODE));
 	}
-	
-	
 	return pNode;
 }
 
@@ -149,57 +147,155 @@ lprofS_STACK_RECORD lprofS_pop(lprofS_STACK *p)
         r=**p;
         q=*p;
         *p=(*p)->next;
-        //free(q);
+        free(q);
 		lprofT_pop();
         return r;
+}
+
+lprofT_NODE* lprofT_assigningNode(lprofT_NODE* pDest,lprofT_NODE* pSource)
+{
+	if(pDest && pSource)
+	{
+		pDest->nChildCount = pSource->nChildCount;
+		pDest->nMaxChildCount = pSource->nMaxChildCount;
+		memcpy(pDest->pChild,pSource->pChild,pSource->nChildCount);
+		pDest->pNode = lprofT_assigningStack(pDest->pNode,pSource->pNode);
+		pDest->pParent = pSource->pParent;
+		pDest->stack_level = pSource->stack_level;
+	}
+	return pDest;
+}
+
+lprofS_STACK lprofT_assigningStack(lprofS_STACK pDest,lprofS_STACK pSource)
+{
+	if(pDest  == NULL && pSource)
+	{
+		pDest = (lprofS_STACK)malloc(sizeof(lprofS_STACK_RECORD));
+		memset(pDest,0x0,sizeof(lprofS_STACK_RECORD));
+		pDest->current_line = pSource->current_line;
+		pDest->current_time = pSource->current_time;
+		if(pSource->file_defined)
+		{
+			pDest->file_defined = (char*)malloc(strlen(pSource->file_defined) + 1);
+			memset(pDest->file_defined,0x0,strlen(pSource->file_defined) + 1);
+			strcpy(pDest->file_defined,pSource->file_defined);
+		}
+		if(pSource->function_name)
+		{
+			pDest->function_name = (char*)malloc(strlen(pSource->function_name) + 1);
+			memset(pDest->function_name,0x0,strlen(pSource->function_name) + 1);
+			strcpy(pDest->function_name,pSource->function_name);
+		}
+		pDest->interval_time = pSource->interval_time;
+		pDest->line_defined = pSource->line_defined;
+		pDest->local_time = pSource->local_time;
+		pDest->next = pSource->next;
+		if(pSource->source_code)
+		{
+			pDest->source_code = (char*)malloc(strlen(pSource->source_code) + 1);
+			memset(pDest->source_code,0x0,strlen(pSource->source_code) + 1);
+			strcpy(pDest->source_code,pSource->source_code);
+		}
+		pDest->stack_level = pSource->stack_level;
+		pDest->time_maker_local_time_begin = pSource->time_maker_local_time_begin;
+		pDest->time_maker_local_time_end = pSource->time_maker_local_time_end;
+		pDest->time_marker_function_local_time = pSource->time_marker_function_local_time;
+		pDest->time_marker_function_total_time = pSource->time_marker_function_total_time;
+		if(pSource->what)
+		{
+			pDest->what = (char*)malloc(strlen(pSource->what) + 1);
+			memset(pDest->what,0x0,strlen(pSource->what) + 1);
+			strcpy(pDest->what,pSource->what);
+		}
+		
+	}
+	return pDest;
 }
 
 void lprofT_add(lprofS_STACK pChild)
 {	
 	lprofT_NODE* p = NULL;
 	nTotalCall++;
-	p = lprofT_createNode(1);
-	p->pNode = pChild;
-	p->stack_level = pChild->stack_level;
-	lprofC_start_timer2(&(pChild->time_maker_local_time_begin));
-	if (pChild->stack_level > nMaxStackLevel)
-		nMaxStackLevel = pChild->stack_level;
+	p = lprofT_createNode();
+	p->pNode = lprofT_assigningStack(p->pNode,pChild);
+	p->stack_level = p->pNode->stack_level;
+	lprofC_start_timer2(&(p->pNode->time_maker_local_time_begin));
+	if (p->pNode->stack_level > nMaxStackLevel)
+		nMaxStackLevel = p->pNode->stack_level;
 	if (pTreeRoot == NULL)
 	{
 		pTreeNode = pTreeRoot = p;
 	}
 	else
 	{
-		if (pTreeNode->stack_level == pChild->stack_level)
+		if (pTreeNode->stack_level == p->pNode->stack_level)
 		{
-			lprofT_addchild(pTreeNode->pParent, p);
+			pTreeNode = lprofT_addchild(pTreeNode->pParent, p);
 		}
 		else
 		{
-			lprofT_addchild(pTreeNode, p);
+			pTreeNode = lprofT_addchild(pTreeNode, p);
 		}
 
-		pTreeNode = p;
+		lprofT_free(p);
 	}
 	
 }
 
 void lprofT_free(lprofT_NODE* p)
 {
+	int i;
 	if (p)
 	{
-		/*
-		if (p->pNode)
+		if(p->nChildCount > 0)
 		{
+			for(i = 0;i < p->nChildCount;i++)
+				lprofT_free(&p->pChild[i]);
+		}
+		freeNode(p);
+		if(p->pParent == NULL)
+		{
+			free(p);
+			p = NULL;
+		}
+	}
+}
+
+void freeNode(lprofT_NODE* p)
+{
+	if(p)
+	{
+		if(p->pNode)
+		{
+			if(p->pNode->file_defined)
+			{
+				free(p->pNode->file_defined);
+				p->pNode->file_defined = NULL;
+			}
+			if(p->pNode->source_code)
+			{
+				free(p->pNode->source_code);
+				p->pNode->source_code = NULL;
+			}
+			if(p->pNode->function_name)
+			{
+				free(p->pNode->function_name);
+				p->pNode->function_name = NULL;
+			}
+			if(p->pNode->what)
+			{
+				free(p->pNode->what);
+				p->pNode->what = NULL;
+			}
 			free(p->pNode);
 			p->pNode = NULL;
 		}
-		free(p->pChild);
-		*/
-		free(p);
-		p = NULL;
+		if(p->pChild)
+		{
+			free(p->pChild);
+			p->pChild = NULL;
+		}
 	}
-	
 }
 
 void lprofT_tojson()
@@ -210,7 +306,7 @@ void lprofT_tojson()
 	if (pTreeRoot)
 	{
 		cJSON* root = treeTojson(pTreeRoot,none,&dLuaConsuming,&dFunConsuming);
-		freeTree(pTreeRoot);
+		lprofT_free(pTreeRoot);
 		jstring = cJSON_Print(root);
 		lprofP_addData(jstring);
 		cJSON_Delete(root);
@@ -306,18 +402,18 @@ cJSON* treeTojson(lprofT_NODE* p, calltype precalltype,double* pdLuaConsuming, d
 	return root;
 }
 
-void freeTree(lprofT_NODE* p)
-{
-	int i = 0;
-	if (p)
-	{
-		for (i = 0;i < p->nChildCount;i++)
-		{
-			freeTree(&p->pChild[i]);
-		}
-		lprofT_free(p);
-	}
-}
+// void freeTree(lprofT_NODE* p)
+// {
+// 	int i = 0;
+// 	if (p)
+// 	{
+// 		for (i = 0;i < p->nChildCount;i++)
+// 		{
+// 			freeTree(&p->pChild[i]);
+// 		}
+// 		lprofT_free(p);
+// 	}
+// }
 
 /*
 	写文件多线程版本，暂时不使用

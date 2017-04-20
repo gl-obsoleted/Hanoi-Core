@@ -74,7 +74,7 @@ static void formats(char *s) {
   int i;
   if (!s)
     return;
-  for (i = strlen(s); i>=0; i--) {
+  for (i = (int)strlen(s); i>=0; i--) {
     if ((s[i] == '|') || (s[i] == '\n'))
       s[i] = ' ';
   }
@@ -183,7 +183,7 @@ lprofP_STATE* lprofP_init_core_profiler(const char *_out_filename, int isto_prin
     fclose(outf);
     return 0;
   }
-    
+  lprofP_open();  
   return S;
 }
 

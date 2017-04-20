@@ -46,7 +46,8 @@ void lprofP_addFrame(int id,char* str);
 void lprofP_addData(char* str);
 void lprofP_output();
 void lprofP_close();
-
+void lprofP_open();
+void lprofP_toBuffer(char* str,int length);
 
 
 #endif
