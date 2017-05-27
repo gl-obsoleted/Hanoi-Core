@@ -37,6 +37,10 @@ static int lua_nFuncCount = 0;
 static int lua_nThreadCount = 0;
 static int lua_nUserDataCount = 0;
 
+//g_fHookAllocFile = NULL;
+//g_iHookFunc = 0;
+//g_nHookSize = 0;
+
 #define TABLE 1
 #define FUNCTION 2
 #define SOURCE 3
@@ -51,6 +55,7 @@ static int lua_nUserDataCount = 0;
 static int profiler_stop(lua_State *L);
 static int profiler_frame(lua_State *L);
 static void mark_object(lua_State *L, lua_State *dL, const void * parent, const char * desc);
+static FILE* g_fMemorySnapshot = NULL;
 //static int profiler_clear(lua_State *L);
 
 /* called by Lua (via the callhook mechanism) */
@@ -323,22 +328,6 @@ static const char *keystring(lua_State *L, int index, char * buffer) {
 	return buffer;
 }
 
-void traverse_table(lua_State *L, int index)
-{
-	lua_pushnil(L);
-	while(lua_next(L, -2))
-	{
-		if (lua_istable(L, -1))
-		{
-			const char* key = lua_tostring(L, -1);
-			const char* value = lua_tostring(L, -2);
-			printf("%s => %s\n", key, value);
-			lua_pop(L, 1);
-		}
-		lua_pop(L, 1);
-	}
-}
-
 static void mark_table(lua_State *L, lua_State *dL, const void * parent, const char * desc) {
 	int type = lua_type(L, -1);
 	const void * t = readobject(L, dL, parent, desc);
@@ -346,9 +335,15 @@ static void mark_table(lua_State *L, lua_State *dL, const void * parent, const c
 	int weakv = 0;
 	const char *mode = NULL;
 	const char *key = NULL;
+	char* name = NULL;
+	char* value = NULL;
+	char addr[32];
 	if (t == NULL)
 		return;
-	output("--------------addr %p   %d   %s\n", t, type, desc);
+	sprintf(addr, "%p",t );
+	//output("%p:%s\n", t, desc);
+	name = (char*)malloc(sizeof(char)*(strlen(desc) + strlen(addr) + 4));
+	sprintf(name, "%p:%s", t, desc);
 	if (lua_getmetatable(L, -1)) {
 		lua_pushliteral(L, "__mode");
 		lua_rawget(L, -2);
@@ -373,15 +368,20 @@ static void mark_table(lua_State *L, lua_State *dL, const void * parent, const c
 		} else {
 			char temp[32];
 			key = keystring(L, -2, temp);
-// 			if (strcmp(key, "tmp") == 0)
-// 				printf("");
-// 			else if(strcmp(key, "two") == 0)
-// 				printf("");
-// 			if (type == LUA_TTABLE)
-// 			{
-// 				output("      ----- %s\n", key);
-// 			}
-			output("      ----- %s %d\n", key,type);
+			if (!value)
+			{
+				int count = (int)sizeof(char) * (int)(strlen(key) + 2);
+				value = (char*)malloc(count);
+				memset(value, 0, count);
+				strcpy(value, key);
+			}
+			else
+			{
+				value = (char*)realloc(value, sizeof(char)*(strlen(value) + strlen(key) + 2));
+				strcat(value, key);
+			}
+			strcat(value, "\n");
+			//output("      ----- %s %d\n", key,type);
 			mark_object(L, dL, t , key);
 		}
 		if (!weakk) {
@@ -389,7 +389,16 @@ static void mark_table(lua_State *L, lua_State *dL, const void * parent, const c
 			mark_object(L, dL, t , "[key]");
 		}
 	}
-
+	if (name)
+	{
+		lprofP_outputToFile(g_fMemorySnapshot,"%s\n", name);
+		free(name);
+	}
+	if (value)
+	{
+		lprofP_outputToFile(g_fMemorySnapshot,"%s\n", value);
+		free(value);
+	}
 	lua_pop(L,1);
 }
 
@@ -398,7 +407,7 @@ static void mark_userdata(lua_State *L, lua_State *dL, const void * parent, cons
 	int type = lua_type(L, -1);
 	if (t == NULL)
 		return;
-	output("--------------addr %p   %d    %s\n", t, type, desc);
+	//output("--------------addr %p   %d    %s\n", t, type, desc);
 	if (lua_getmetatable(L, -1)) {
 		mark_table(L, dL, t, "[metatable]");
 	}
@@ -423,7 +432,7 @@ static void mark_function(lua_State *L, lua_State *dL, const void * parent, cons
 	luaL_Buffer b;
 	if (t == NULL)
 		return;
-	output("--------------addr %p   %d   %s\n", t, type, desc);
+	//output("--------------addr %p   %d   %s\n", t, type, desc);
 	mark_function_env(L,dL,t);
 
 	for (i=1;;i++) {
@@ -449,7 +458,7 @@ static void mark_function(lua_State *L, lua_State *dL, const void * parent, cons
 		sprintf(tmp,":%d",ar.linedefined);
 		luaL_addstring(&b, tmp);
 		luaL_pushresult(&b);
-		output("      ----- %s%s %d\n", ar.short_src,tmp, type);
+		//output("      ----- %s%s %d\n", ar.short_src,tmp, type);
 		lua_rawsetp(dL, SOURCE, t);
 	}
 }
@@ -468,7 +477,7 @@ static void mark_thread(lua_State *L, lua_State *dL, const void * parent, const 
 	int i,j;
 	if (t == NULL)
 		return;
-	output("--------------addr %p   %d   %s\n", t, type, desc);
+	//output("--------------addr %p   %d   %s\n", t, type, desc);
 	cL = lua_tothread(L,-1);
 	if (cL == L) {
 		level = 1;
@@ -491,7 +500,7 @@ static void mark_thread(lua_State *L, lua_State *dL, const void * parent, const 
 		if (ar.currentline >=0) {
 			memset(tmp,0x0,128);
 			sprintf(tmp,":%d ",ar.currentline);
-			output("      ----- %s%s %d\n", ar.short_src, tmp, type);
+			//output("      ----- %s%s %d\n", ar.short_src, tmp, type);
 			luaL_addstring(&b, tmp);
 		}
 
@@ -540,15 +549,9 @@ static void mark_object(lua_State *L, lua_State *dL, const void * parent, const 
 
 static int count_table(lua_State *L, int idx) {
 	int n = 0;
-	const char *key = NULL;
-	const char *value = NULL;
-	char temp[32];
 	lua_pushnil(L);
 	while (lua_next(L, idx) != 0) {
 		++n;
-		//memset(temp,0x0,32);
-		//key = keystring(L, -2, temp);
-		//value = lua_tostring(L, -1);
 		lua_pop(L,1);
 	}
 	return n;
@@ -641,28 +644,29 @@ static void count_result(lua_State* L,lua_State* dL)
 
 
 static int memory_snapshot(lua_State *L) {
-
-	outf = fopen("d://snapshot.log", "w");
 	int i;
 	const char* file = NULL;
 	//char sz[160];
 	lua_State *dL = NULL;
 	if(lua_gettop(L) >= 1)
 		file = luaL_checkstring(L, 1);
-	dL = luaL_newstate();
-	for (i=0;i<MARK;i++) {
-		lua_newtable(dL);
+	if(file)
+	{
+		g_fMemorySnapshot = fopen(file,"w");
+		if(g_fMemorySnapshot)
+		{
+			dL = luaL_newstate();
+			for (i=0;i<MARK;i++) {
+				lua_newtable(dL);
+			}
+			lua_pushvalue(L, LUA_REGISTRYINDEX);
+			mark_table(L, dL, NULL, "[registry]");
+			fclose(g_fMemorySnapshot);
+			lua_close(dL);
+			g_fMemorySnapshot = NULL;
+		}
 	}
-	lua_pushvalue(L, LUA_REGISTRYINDEX);
-	mark_table(L, dL, NULL, "[registry]");
-	gen_result(L, dL);
-	//memset(sz,0x0,160);
-	//sprintf(sz,"[table]=%d [function]=%d [thread]=%d [userdata]=%d\n",lua_nTableCount,lua_nFuncCount,lua_nThreadCount,lua_nUserDataCount);
-	//lua_pushfstring(L,sz);
-	//count_result(L,dL);
-	fclose(outf);
-	lua_close(dL);
-	return 1;
+	return 0;
 }
 
 

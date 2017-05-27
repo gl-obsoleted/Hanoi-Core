@@ -48,6 +48,6 @@ void lprofP_output();
 void lprofP_close();
 void lprofP_open();
 void lprofP_toBuffer(char* str,int length);
-
+void lprofP_outputToFile(FILE* file,const char* format,...);
 
 #endif

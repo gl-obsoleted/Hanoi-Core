@@ -49,6 +49,19 @@ void output(const char *format, ...) {
 	//dTotalWriteConsuming += lprofC_get_seconds2(&timestart);
 }
 
+void lprofP_outputToFile(FILE* file,const char* format,...)
+{
+	if(file)
+	{
+		va_list ap;
+		va_start(ap, format);
+		vfprintf(file, format, ap);
+		va_end(ap);
+		fflush(file);
+	}
+}
+
+
 void lprofP_toBuffer(char* str,int length)
 {
 	if(nBufferWrited + length >= nOutputBufferSize)
@@ -100,7 +113,7 @@ void lprofP_addData(char* str)
 	{
 		if (pOutputTail->data)
 		{
-			len = (int)strlen(pOutputTail->data) + (int)strlen(str) + 1;
+			len = (int)strlen(pOutputTail->data) + (int)strlen(str) + 2;
 			psz = (char*)malloc(len);
 			if(psz)
 			{
@@ -131,7 +144,7 @@ void lprofP_output()
 		lprofP_OUTPUT pOut = pOutputHead;
 		if (pOut->data)
 		{
-			nLen = (int)strlen(pOut->frame) + 1;
+			nLen = (int)strlen(pOut->frame) + 2;
 			psz = (char*)malloc(nLen);
 			if(psz)
 			{
@@ -145,7 +158,7 @@ void lprofP_output()
 				lprofP_toBuffer(psz,nLen);
 				free(psz);
 			}
-			nLen = (int)strlen(pOut->data) + 1;
+			nLen = (int)strlen(pOut->data) + 2;
 			psz = (char*)malloc(nLen);
 			if(psz)
 			{
@@ -164,7 +177,7 @@ void lprofP_output()
 		{
 			if (sPrevNode.id != pOut->id && sPrevNode.data != 0)
 			{
-				nLen = (int)strlen(pOut->frame) + 1;
+				nLen = (int)strlen(pOut->frame) + 2;
 				psz = (char*)malloc(nLen);
 				if(psz)
 				{
@@ -220,3 +233,17 @@ void lprofP_open()
 	pOutputBuffer = (char*)malloc(sizeof(char)*nOutputBufferSize);
 	memset(pOutputBuffer,0x0,sizeof(char)*nOutputBufferSize);
 }
+
+/*
+void lprofP_outputToFile(FILE* file, const char* format, ...)
+{
+	if (file)
+	{
+		va_list ap;
+		va_start(ap, format);
+		vfprintf(file, format, ap);
+		va_end(ap);
+		fflush(file);
+	}
+}
+*/

@@ -57,7 +57,7 @@ struct lprofS_TREE_RECORD
 	lprofT_NODE* pParent;
 	lprofT_NODE* pChild;
 	int nChildCount;
-	int nMaxChildCount;
+	//int nMaxChildCount;
 };
 
 struct lprofP_sSTATE {

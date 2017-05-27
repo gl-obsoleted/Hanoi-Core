@@ -65,25 +65,44 @@ lprofT_NODE* lprofT_addchild(lprofT_NODE* pParent, lprofT_NODE* pChild)
 	lprofT_NODE* pResult = NULL;
 	if (pParent)
 	{
-		if (pParent->nChildCount >= pParent->nMaxChildCount)
+// 		if (pParent->nChildCount >= pParent->nMaxChildCount)
+// 		{
+// 			lprofT_NODE* ppTmp = (lprofT_NODE*)realloc(pParent->pChild, pParent->nMaxChildCount * 2 * sizeof(lprofT_NODE));
+// 			assert(ppTmp);
+// 			if (ppTmp)
+// 			{
+// 				pParent->pChild = ppTmp;
+// 				//pParent->pChild[pParent->nChildCount] = *pChild;
+// 				pResult = &(pParent->pChild[pParent->nChildCount]);
+// 				lprofT_assigningNode(pResult,pChild);
+// 				pParent->nMaxChildCount = pParent->nMaxChildCount * 2;
+// 			}
+// 		}
+// 		else
+// 		{
+// 			//pParent->pChild[pParent->nChildCount] = *pChild;
+// 			pResult = &(pParent->pChild[pParent->nChildCount]);
+// 			lprofT_assigningNode(pResult,pChild);
+// 		}
+		if(pParent->nChildCount > 0)
 		{
-			lprofT_NODE* ppTmp = (lprofT_NODE*)realloc(pParent->pChild, pParent->nMaxChildCount * 2 * sizeof(lprofT_NODE));
+			lprofT_NODE* ppTmp = (lprofT_NODE*)realloc(pParent->pChild, (pParent->nChildCount + 1) * sizeof(lprofT_NODE));
 			assert(ppTmp);
 			if (ppTmp)
 			{
 				pParent->pChild = ppTmp;
-				//pParent->pChild[pParent->nChildCount] = *pChild;
 				pResult = &(pParent->pChild[pParent->nChildCount]);
 				lprofT_assigningNode(pResult,pChild);
-				pParent->nMaxChildCount = pParent->nMaxChildCount * 2;
 			}
 		}
 		else
 		{
-			//pParent->pChild[pParent->nChildCount] = *pChild;
-			pResult = &(pParent->pChild[pParent->nChildCount]);
+			pResult = (lprofT_NODE*)malloc(sizeof(lprofT_NODE));
+			memset(pResult,0x0,sizeof(lprofT_NODE));
 			lprofT_assigningNode(pResult,pChild);
+			pParent->pChild = pResult;
 		}
+		
 		pResult->pParent = pParent;
 		pParent->nChildCount++;
 		if (pResult && pResult->pNode && pParent->pNode)
@@ -117,11 +136,11 @@ lprofT_NODE* lprofT_createNode()
 	if(pNode)
 	{
 		memset(pNode, 0x0, sizeof(lprofT_NODE));
-		pNode->pChild = (lprofT_NODE*)malloc(MAX_CHILD_SIZE*sizeof(lprofT_NODE));
+		//pNode->pChild = (lprofT_NODE*)malloc(MAX_CHILD_SIZE*sizeof(lprofT_NODE));
 		pNode->nChildCount = 0;
-		pNode->nMaxChildCount = MAX_CHILD_SIZE;
-		if(pNode->pChild)
-			memset(pNode->pChild, 0x0, MAX_CHILD_SIZE*sizeof(lprofT_NODE));
+		//pNode->nMaxChildCount = MAX_CHILD_SIZE;
+		//if(pNode->pChild)
+			//memset(pNode->pChild, 0x0, MAX_CHILD_SIZE*sizeof(lprofT_NODE));
 	}
 	return pNode;
 }
@@ -157,8 +176,8 @@ lprofT_NODE* lprofT_assigningNode(lprofT_NODE* pDest,lprofT_NODE* pSource)
 	if(pDest && pSource)
 	{
 		pDest->nChildCount = pSource->nChildCount;
-		pDest->nMaxChildCount = pSource->nMaxChildCount;
-		memcpy(pDest->pChild,pSource->pChild,pSource->nChildCount);
+		//pDest->nMaxChildCount = pSource->nMaxChildCount;
+		pDest->pChild = NULL;
 		pDest->pNode = lprofT_assigningStack(pDest->pNode,pSource->pNode);
 		pDest->pParent = pSource->pParent;
 		pDest->stack_level = pSource->stack_level;
@@ -168,7 +187,7 @@ lprofT_NODE* lprofT_assigningNode(lprofT_NODE* pDest,lprofT_NODE* pSource)
 
 lprofS_STACK lprofT_assigningStack(lprofS_STACK pDest,lprofS_STACK pSource)
 {
-	if(pDest  == NULL && pSource)
+	if(pSource)
 	{
 		pDest = (lprofS_STACK)malloc(sizeof(lprofS_STACK_RECORD));
 		memset(pDest,0x0,sizeof(lprofS_STACK_RECORD));
@@ -244,13 +263,13 @@ void lprofT_add(lprofS_STACK pChild)
 
 void lprofT_free(lprofT_NODE* p)
 {
-	int i;
 	if (p)
 	{
 		if(p->nChildCount > 0)
 		{
-			for(i = 0;i < p->nChildCount;i++)
-				lprofT_free(&p->pChild[i]);
+			//for(i = 0;i < p->nChildCount;i++)
+				//lprofT_free(&p->pChild[i]);
+			lprofT_free(p->pChild);
 		}
 		freeNode(p);
 		if(p->pParent == NULL)
