@@ -79,7 +79,7 @@ static void callhook(lua_State *L, lua_Debug *ar) {
 
   stackIndex = lua_gettop(L);
 
-  printf("stacklevel = %d", S->stack_level);
+  //printf("stacklevel = %d", S->stack_level);
 
 	if (!ar->event) {
 		  /* entering a function */

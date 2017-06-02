@@ -166,6 +166,22 @@ lprofS_STACK_RECORD lprofS_pop(lprofS_STACK *p)
         r=**p;
         q=*p;
         *p=(*p)->next;
+
+		
+		if(q->function_name)
+		{
+			free(q->function_name);
+			 
+		}
+		if(q->what)
+		{
+			free(q->what);
+		}
+
+		if(q->file_defined){
+			free(q->file_defined);
+		}
+		
         free(q);
 		lprofT_pop();
         return r;
@@ -267,9 +283,10 @@ void lprofT_free(lprofT_NODE* p)
 	{
 		if(p->nChildCount > 0)
 		{
-			//for(i = 0;i < p->nChildCount;i++)
-				//lprofT_free(&p->pChild[i]);
-			lprofT_free(p->pChild);
+			int i = 0;
+			for(i = 0;i < p->nChildCount;i++)
+				lprofT_free(&p->pChild[i]);
+			//free(p->pChild);
 		}
 		freeNode(p);
 		if(p->pParent == NULL)

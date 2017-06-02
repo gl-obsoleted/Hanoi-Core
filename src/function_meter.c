@@ -164,7 +164,9 @@ void lprofM_enter_function(lprofP_STATE* S, char *file_defined, char *fcn_name, 
   }
 	
   if(fcn_name != NULL) {
-    newf.function_name = fcn_name;
+  	cur_name = (char*)malloc( strlen(fcn_name)+1 );
+	strcpy(cur_name, fcn_name);
+    newf.function_name = cur_name;
   } else if(file_defined != NULL && strcmp(file_defined, "=[C]") == 0) {
     cur_name = (char*)malloc(sizeof(char)*(strlen("called from ")+strlen(prev_name)+1));
 	if(cur_name)
