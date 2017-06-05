@@ -89,4 +89,5 @@ void lprofT_tojson();
 void lprofT_close();
 cJSON* treeTojson(lprofT_NODE* p, calltype precalltype, double* pdLuaConsuming, double* pdFunConsuming);
 //void freeTree(lprofT_NODE* p);
+int filter_lua_api(char* func_name);
 #endif

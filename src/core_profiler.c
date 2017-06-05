@@ -80,36 +80,15 @@ static void formats(char *s) {
   }
 }
 
-/*
-	将lua api的操作记录剔除
-	2016-08-10 lennon.c
-*/
-int filter_lua_api(char* func_name)
-{
-	static char *lua_api[] = {
-		"assert", "unpack", "__index", "__newindex", "setmetatable", "getmetatable", "rawget", "type",
-		"remove", NULL };
 
-	char **p = lua_api;
-	while (*p != NULL)
-	{
-		if (strcmp(*p, func_name) == 0)
-		{
-			return 1;
-		}
-
-		p++;
-	}
-
-	return 0;
-}
 
 /* computes new stack and new timer */
 void lprofP_callhookIN(lprofP_STATE* S, char *func_name, char *file, int linedefined, int currentline,char* what) 
 {
   // 过滤lua api操作 2016-08-10 lennon.c
-  if (func_name && filter_lua_api(func_name))
-	return;
+ /// if (func_name && filter_lua_api(func_name))
+//	return;
+
   S->stack_level++;
   lprofM_enter_function(S, file, func_name, linedefined, currentline,what);
   

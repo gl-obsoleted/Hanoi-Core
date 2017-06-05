@@ -50,6 +50,30 @@ LARGE_INTEGER time_maker_golbal_start;
 LARGE_INTEGER time_maker_golbal_stop;
 
 
+/*
+	将lua api的操作记录剔除
+	2016-08-10 lennon.c
+*/
+int filter_lua_api(char* func_name)
+{
+	static char *lua_api[] = {
+		"assert", "unpack", "__index", "__newindex", "setmetatable", "getmetatable", "rawget", "type",
+		"remove", NULL };
+
+	char **p = lua_api;
+	while (*p != NULL)
+	{
+		if (strcmp(*p, func_name) == 0)
+		{
+			return 1;
+		}
+
+		p++;
+	}
+
+	return 0;
+}
+
 void formats(char *s) {
 	int i;
 	if (!s)
@@ -367,17 +391,24 @@ cJSON* treeTojson(lprofT_NODE* p, calltype precalltype,double* pdLuaConsuming, d
 {
 	
 	cJSON* root = NULL;
+	cJSON* pChild = NULL;
+	char* source = NULL;
+	char* name = NULL;
+	double beginTime = 0.0;
+	double endTime = 0.0;
+	double consumingTimer = 0.0;
+	int i = 0;
+	calltype curCalltype;
 	assert(p);
 	if (p && p->pNode)
 	{
-		cJSON* pChild = NULL;
-		calltype curCalltype;
-		char* source = NULL;
-		char* name = NULL;
-		int i = 0;
-		double beginTime = lprofC_get_interval(&time_maker_golbal_start,&p->pNode->time_maker_local_time_begin);
-		double endTime = lprofC_get_interval(&time_maker_golbal_start,&p->pNode->time_maker_local_time_end);
-		double consumingTimer = lprofC_get_interval(&p->pNode->time_maker_local_time_begin, &p->pNode->time_maker_local_time_end);
+		if(p->pNode->function_name && filter_lua_api(p->pNode->function_name)){
+			return NULL;
+		}
+
+		beginTime = lprofC_get_interval(&time_maker_golbal_start,&p->pNode->time_maker_local_time_begin);
+		endTime = lprofC_get_interval(&time_maker_golbal_start,&p->pNode->time_maker_local_time_end);
+		consumingTimer = lprofC_get_interval(&p->pNode->time_maker_local_time_begin, &p->pNode->time_maker_local_time_end);
 		root = cJSON_CreateObject();
 		cJSON_AddItemToObject(root, "ln", cJSON_CreateNumber(p->pNode->current_line));
 		//cJSON_AddItemToObject(root, "lineDefined", cJSON_CreateNumber(p->pNode->line_defined));
