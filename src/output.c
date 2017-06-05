@@ -113,13 +113,13 @@ void lprofP_addData(char* str)
 	{
 		if (pOutputTail->data)
 		{
-			len = (int)strlen(pOutputTail->data) + (int)strlen(str) + 2;
+			len = (int)strlen(pOutputTail->data) + (int)strlen(str) + 3;
 			psz = (char*)malloc(len);
 			if(psz)
 			{
 				memset(psz, 0x0, len);
 				strcpy(psz, pOutputTail->data);
-				strcat(psz, ",");
+				strcat(psz, ",\n");
 				strcat(psz, str);
 				free(str);
 				free(pOutputTail->data);
@@ -144,13 +144,13 @@ void lprofP_output()
 		lprofP_OUTPUT pOut = pOutputHead;
 		if (pOut->data)
 		{
-			nLen = (int)strlen(pOut->frame) + 2;
+			nLen = (int)strlen(pOut->frame) + 3;
 			psz = (char*)malloc(nLen);
 			if(psz)
 			{
 				memset(psz, 0x0, nLen);
 				strcpy(psz, pOut->frame);
-				strcat(psz, ",");
+				strcat(psz, ",\n");
 				if (pOutputCallback)
 				{
 					pOutputCallback(psz);
@@ -158,13 +158,13 @@ void lprofP_output()
 				lprofP_toBuffer(psz,nLen);
 				free(psz);
 			}
-			nLen = (int)strlen(pOut->data) + 2;
+			nLen = (int)strlen(pOut->data) + 3;
 			psz = (char*)malloc(nLen);
 			if(psz)
 			{
 				memset(psz, 0x0, nLen);
 				strcpy(psz, pOut->data);
-				strcat(psz, ",");
+				strcat(psz, ",\n");
 				sendUnityMessage(psz);
 				lprofP_toBuffer(psz,nLen);
 				free(psz);
@@ -177,13 +177,13 @@ void lprofP_output()
 		{
 			if (sPrevNode.id != pOut->id && sPrevNode.data != 0)
 			{
-				nLen = (int)strlen(pOut->frame) + 2;
+				nLen = (int)strlen(pOut->frame) + 3;
 				psz = (char*)malloc(nLen);
 				if(psz)
 				{
 					memset(psz, 0x0, nLen);
 					strcpy(psz, pOut->frame);
-					strcat(psz, ",");
+					strcat(psz, ",\n");
 					sendUnityMessage(psz);
 					lprofP_toBuffer(psz,nLen);
 					free(psz);
